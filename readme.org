@@ -293,13 +293,13 @@ iteration. Rest will die:
 
 #+begin_src lisp
 
-(def (function e) select-survivors (population ratio &key (maximize nil))
+(def (function e) select-survivors (population ratio &key (maximize nil) (get-fit-fn #'get-fit))
   (let* ((with-fit (remove-if #'null population
                               :key #'get-fit))
          (sorted (sort with-fit (if maximize
                                     #'>
                                     #'<)
-                       :key #'get-fit)))
+                       :key get-fit-fn)))
     (rutils:take (ceiling (* (length sorted)
                              ratio))
                  sorted)))
@@ -311,9 +311,10 @@ end of the algorigthm:
 
 #+begin_src lisp
 
-(def (function ei) select-the-best (population &key (maximize nil))
+(def (function ei) select-the-best (population &key (maximize nil) (get-fit-fn #'get-fit))
   (first (select-survivors population 0.01
-                           :maximize maximize)))
+                           :maximize maximize
+			   :get-fit-fn get-fit-fn)))
 
 #+end_src
 
@@ -551,6 +552,7 @@ the user's code:
                                (population-size 100)
                                (max-iterations 1000)
                                (maximize nil)
+			       (get-fit-fn #'get-fit)
                                (num-beings-to-protect 1)
                                (survive-ratio 0.5)
                                ;; Then percentage of population
@@ -610,7 +612,7 @@ the user's code:
                                                       genome)
                                    (mutate :num-beings-to-protect ,num-beings-to-protect)
                                    (,calculate-fit #'fit)
-                                   (select-survivors ,survive-ratio :maximize ,maximize))
+                                   (select-survivors ,survive-ratio :maximize ,maximize :get-fit-fn ,get-fit-fn))
                  for -best-being- = (first survivors)
                  for worst-being = (car (last survivors))
                  for -fit- = (when -best-being-
@@ -619,18 +621,13 @@ the user's code:
                                      (get-fit worst-being))
                  do (setf -population- survivors)
                     (progn ,after-each-iteration)
-                    (format t "Num survivors: ~A with some fit: ~A~%"
-                            (length survivors)
-                            (count-if (lambda (item)
-                                        (not (null (get-fit item))))
-                                      survivors))
                  finally (log:warn "Algorithm stopped after" ,max-iterations "iterations")))
          
          (progn ,finally)
          
          (arrows:-> -population-
            (remove-if-null-fit)
-           (select-the-best :maximize ,maximize))))))
+           (select-the-best :maximize ,maximize :get-fit-fn ,get-fit-fn))))))
 
 #+end_src
 
